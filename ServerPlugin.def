@@ -1,0 +1,14 @@
+EXPORTS
+	MtSrvAbout
+	MtSrvStartup
+	MtSrvPluginCfgAdd
+	MtSrvPluginCfgSet
+	MtSrvPluginCfgGet
+	MtSrvPluginCfgNext
+	MtSrvPluginCfgDelete
+	MtSrvPluginCfgTotal
+	MtSrvTradesAdd
+	MtSrvTradesUpdate
+	MtSrvTradesAddExt
+	MtSrvTradesCloseBy
+    MtSrvTelnet
