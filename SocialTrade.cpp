@@ -462,4 +462,25 @@ void SocialTrade::getUserInfo(int login, UserInfo *_user){
 	COPY_STR((*_user).group, subcribeUser.group);
 	COPY_STR((*_user).name, subcribeUser.name);
 }
-
+//добавить подписчика к мастеру
+bool SocialTrade::addSubscribe(unsigned int master, unsigned int subscribe)
+{
+    #if DEBUG
+    ExtLogger.Out(RET_OK, "SocialTrade", "addSubscribe: master %d subscribe %d", master, subscribe);
+    #endif	
+	string q = "insert into socialtrade(`login`,`subscriber`) values([l],[s])";
+	replaceStr(&q, "[l]", master);	
+    replaceStr(&q, "[s]", subscribe);
+	return sql.query(q);	
+}
+//удалить подписчика с мастера
+bool SocialTrade::deleteSubscribe(unsigned int master, unsigned int subscribe)
+{
+    #if DEBUG
+	ExtLogger.Out(RET_OK, "SocialTrade", "deleteSubscribe: master %d subscribe %d", master, subscribe);
+    #endif	
+    string q = "delete from socialtrade where `login`=[l] and `subscriber`=[s]";
+    replaceStr(&q, "[l]", master);	
+    replaceStr(&q, "[s]", subscribe);
+    return sql.query(q);	
+}

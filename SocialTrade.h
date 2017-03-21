@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <list>
 #include <Windows.h>
@@ -29,6 +29,10 @@ public:
 	void TradeClose(TradeRecord *trade, UserInfo *user, const int mode);
 	CServerInterface *getServerInterface();
 	bool mainIsRun();
+
+    bool addSubscribe(unsigned int master, unsigned int subscribe);//добавить подписчика к мастеру
+    bool deleteSubscribe(unsigned int master, unsigned int subscribe);//удалить подписчика с мастера
+    //настройки мастера
 	
 
 	int saveOrder(int order, int subs_order);

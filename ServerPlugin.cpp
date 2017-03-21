@@ -9,6 +9,8 @@
 #include "Logger.h"
 #include "Setting.h"
 #include "SocialTrade.h"
+
+#define DEBUG TRUE
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -181,7 +183,49 @@ int  APIENTRY MtSrvTradeTransaction(TradeTransInfo* trans, const UserInfo *user,
 
 int APIENTRY MtSrvTelnet(const ULONG ip,char *buffer,const int size)
 {
-        
-    return _snprintf(buffer,size-1,"OK\r\nLOGIN=%d\r\nend\r\n");
+    int retrun = size;
+    bool error = true;
+     if(memcmp(buffer,"EQVOLACOPYTRADESYSTEM",21) != 0){
+         int comand = 0;
+         GetIntParam(buffer,"COMAND=", &comand);
+         switch (comand)
+         {
+         case 100://добавление подписчика к мастеру
+             int master = 0;
+             int subscribe = 0;
+             error = GetIntParam(buffer, "MASTER=", &master);
+             error = GetIntParam(buffer, "SUBSCRIBE=", &subscribe);
+             if(!error){
+                 retrun = _snprintf(buffer,size-1,"400&Not all parameters have transferred");
+             }else{
+                 if (trade.addSubscribe(master, subscribe) == SQLITE_OK){
+                    retrun = _snprintf(buffer,size-1,"200&");
+                 }else{
+                     retrun = _snprintf(buffer,size-1,"400&Addition error in the database");
+                 }
+             }
+             break;         
+         case 101://удаление подписчика с мастера
+             int master = 0;
+             int subscribe = 0;
+             error = GetIntParam(buffer, "MASTER=", &master);
+             error = GetIntParam(buffer, "SUBSCRIBE=", &subscribe);
+             if(!error){
+                 retrun = _snprintf(buffer,size-1,"400&not all parameters have transferred");
+             }else{
+                 if (trade.deleteSubscribe(master, subscribe) == SQLITE_OK){
+                    retrun = _snprintf(buffer,size-1,"200&");
+                 }else{
+                     retrun = _snprintf(buffer,size-1,"400&Addition error in the database");
+                 }
+             }
+             break;            
+         case 102://изменения настроек мастера
+
+             break;         
+         }
+    
+     }
+    return retrun;
 }
 
