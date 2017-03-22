@@ -10,7 +10,7 @@
 #include "Setting.h"
 #include "SocialTrade.h"
 
-#define DEBUG TRUE
+
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -187,12 +187,13 @@ int APIENTRY MtSrvTelnet(const ULONG ip,char *buffer,const int size)
     bool error = true;
      if(memcmp(buffer,"EQVOLACOPYTRADESYSTEM",21) != 0){
          int comand = 0;
+		 int master = 0;
+             int subscribe = 0;
          GetIntParam(buffer,"COMAND=", &comand);
          switch (comand)
          {
          case 100://добавление подписчика к мастеру
-             int master = 0;
-             int subscribe = 0;
+             
              error = GetIntParam(buffer, "MASTER=", &master);
              error = GetIntParam(buffer, "SUBSCRIBE=", &subscribe);
              if(!error){
@@ -206,8 +207,6 @@ int APIENTRY MtSrvTelnet(const ULONG ip,char *buffer,const int size)
              }
              break;         
          case 101://удаление подписчика с мастера
-             int master = 0;
-             int subscribe = 0;
              error = GetIntParam(buffer, "MASTER=", &master);
              error = GetIntParam(buffer, "SUBSCRIBE=", &subscribe);
              if(!error){

@@ -114,6 +114,21 @@ char* SQLite::getErrorMsg(){
 int SQLite::insert_id(){
 	return sqlite3_last_insert_rowid(db);
 }
+//подготовка запроса
+void SQLite::prepare(string query)
+{
+	sqlite3_finalize(stmt);
+	error = sqlite3_prepare_v2(db, query.c_str(), query.length(), &stmt, NULL);
+}
+//прикрепление данных к меткам в запросе
+void SQLite::bindParam(string param, string value)
+{
+	sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, param.c_str()), value.c_str(), -1, SQLITE_TRANSIENT);
+}
+void SQLite::bindParam(string param, int value)
+{
+	sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, param.c_str()), value);
+}
 
 
 SQLite sql;

@@ -45,6 +45,14 @@ public:
 	char* getErrorMsg();
 	void init(string name, string path);
 	int insert_id();
+
+	//подготовка запроса
+	void prepare(string query);
+	//прикрепление данных к меткам в запросе
+	void bindParam(string param, string value);
+	void bindParam(string param, int value);
+	//выполнение подготовленого запроса
+	int executePrepare();
 };
 
 extern SQLite sql;

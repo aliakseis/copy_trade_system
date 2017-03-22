@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include "include\MT4ServerAPI.h"
 #include "SocketServer.h"
+#include <string>
 
 
 using namespace std;
@@ -20,6 +21,7 @@ class SocialTrade
 public:
 	SocialTrade();
 	~SocialTrade();
+	void init();
 	void addTurn(TradeRecord *trade, const UserInfo *user, const int mode, const ConSymbol *symb);
 	void setServerInterface(CServerInterface *param);
 	void tradeRequestApply(RequestInfo *req);
@@ -33,6 +35,7 @@ public:
     bool addSubscribe(unsigned int master, unsigned int subscribe);//добавить подписчика к мастеру
     bool deleteSubscribe(unsigned int master, unsigned int subscribe);//удалить подписчика с мастера
     //настройки мастера
+	int updateSettingSubscribe(int login, string name_setting, string value);//настройки подписчика
 	
 
 	int saveOrder(int order, int subs_order);

@@ -392,17 +392,24 @@ void SocialTrade::tradeRequestApply(RequestInfo *req){
 
 canalProc funcSocket = addSubscribe;
 SocialTrade::SocialTrade(){
-	ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade");
+
+}
+
+void SocialTrade::init(){
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "", "SocialTrade::init");
+	#endif
 	//canalProc func = main;
 	run_main = true;
 	//soc_server.initCanal("SocialTrade", (canalProc *)mainSocialTrade, this);
 	//ExtLogger.Out(RET_OK, "SocialTrade::SocialTrade", "start canal");
 	sql.query("CREATE TABLE IF NOT EXISTS socialtrade (id INTEGER PRIMARY KEY AUTOINCREMENT, login INTEGER, subscriber INTEGER)");
 	sql.query("CREATE TABLE IF NOT EXISTS 'order' ('order' BIGINT, subscribe_order BIGINT)");
-    sql.query("");
+	sql.query("CREATE TABLE IF NOT EXISTS setting_master (id INTEGER PRIMARY KEY AUTOINCREMENT, master_login INTEGER)");
+	sql.query("CREATE TABLE IF NOT EXISTS setting_subscribe (id INTEGER PRIMARY KEY AUTOINCREMENT, subscribe_login INTEGER, percent INTEGER)");
 	
 	//soc_server.initSocketCanal("addSubscribe", &funcSocket, 45000, this);
-	ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade init Socket");
+	//ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade init Socket");
 }
 
 
@@ -484,4 +491,23 @@ bool SocialTrade::deleteSubscribe(unsigned int master, unsigned int subscribe)
     replaceStr(&q, "[l]", master);	
     replaceStr(&q, "[s]", subscribe);
     return sql.query(q);	
+}
+//настройки подписчика
+int updateSettingSubscribe(int login, string name_setting, string value)
+{
+	if(!login || (name_setting == "")){
+		return 401;
+	}
+	string q = "select * from socialtrade where subscriber=[s]";
+	replaceStr(&q, "[s]", login);
+	if(sql.query(q) == SQLITE_ROW){
+		q = "update setting_subscribe set [ns] = [v]";
+		replaceStr(&q, "[ns]", name_setting);
+		replaceStr(&q, "[v]", value);
+		if(sql.query(q) == SQLITE_ERROR){
+			return 403;
+		}
+	}else{
+		return 402;
+	}
 }

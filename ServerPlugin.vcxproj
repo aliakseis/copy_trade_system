@@ -176,6 +176,7 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="ServerPlugin.cpp" />
     <ClCompile Include="Setting.cpp" />
+    <ClCompile Include="SettingUser.cpp" />
     <ClCompile Include="SocialTrade.cpp" />
     <ClCompile Include="SocketServer.cpp" />
     <ClCompile Include="sqlite\source\sqlite3.c" />
@@ -190,6 +191,7 @@
     <ClInclude Include="include\MT4ServerAPI.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Setting.h" />
+    <ClInclude Include="SettingUser.h" />
     <ClInclude Include="SocialTrade.h" />
     <ClInclude Include="SocketServer.h" />
     <ClInclude Include="sqlite\source\sqlite3.h" />
