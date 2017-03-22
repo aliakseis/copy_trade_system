@@ -399,6 +399,7 @@ SocialTrade::SocialTrade(){
 	//ExtLogger.Out(RET_OK, "SocialTrade::SocialTrade", "start canal");
 	sql.query("CREATE TABLE IF NOT EXISTS socialtrade (id INTEGER PRIMARY KEY AUTOINCREMENT, login INTEGER, subscriber INTEGER)");
 	sql.query("CREATE TABLE IF NOT EXISTS 'order' ('order' BIGINT, subscribe_order BIGINT)");
+    sql.query("");
 	
 	//soc_server.initSocketCanal("addSubscribe", &funcSocket, 45000, this);
 	ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade init Socket");
