@@ -10,6 +10,12 @@
 #include <windows.h>
 #include <time.h>
 #include <stdio.h>
+#include "var.h"
 //+------------------------------------------------------------------+
 
 #define DEBUG TRUE
+
+
+
+
+

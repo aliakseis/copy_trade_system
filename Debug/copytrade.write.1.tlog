@@ -1,6 +1,3 @@
-^D:\work\My program\CopySystem\ServerPlugin.vcxproj
-D:\work\My program\CopySystem\Debug\ServerPlugin.lib
-D:\work\My program\CopySystem\Debug\ServerPlugin.exp
-^D:\work\MT4\eqvola\CopySystem\ServerPlugin.vcxproj
-D:\work\MT4\eqvola\CopySystem\Debug\ServerPlugin.lib
-D:\work\MT4\eqvola\CopySystem\Debug\ServerPlugin.exp
+^D:\MT4\eqvola\copy_trade_system\ServerPlugin.vcxproj
+D:\MT4\eqvola\copy_trade_system\Debug\ServerPlugin.lib
+D:\MT4\eqvola\copy_trade_system\Debug\ServerPlugin.exp

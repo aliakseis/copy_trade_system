@@ -53,7 +53,9 @@ int addSubscribe(string name, void *data){
 }
 
 int mainSocialTrade(string name, void *data){
-	ExtLogger.Out(RET_OK, "mainSocialTrade", "start canal");
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "mainSocialTrade", "start canal");
+	#endif
 	SocialTrade *soc_trade = (SocialTrade *)data;
 	turnSync.Lock();
 	list<RequestData> turn;
@@ -61,9 +63,13 @@ int mainSocialTrade(string name, void *data){
 	soc_trade->turn.clear();
 	turnSync.Unlock();
 	do{
-	ExtLogger.Out(RET_OK, "mainSocialTrade", "start canal %d", turn.size());
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "mainSocialTrade", "start canal %d", turn.size());
+	#endif
 		for (list<RequestData>::iterator it = turn.begin(); it != turn.end(); ++it){
-			ExtLogger.Out(RET_OK, "mainSocialTrade ", "%d", (*it).mode);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "mainSocialTrade ", "%d", (*it).mode);
+			#endif
 			if ((*it).mode == -1){
 				soc_trade->tradesAdd(&(*it).trade, &(*it).user, &(*it).symb);
 			}else if ((*it).mode == UPDATE_NORMAL){
@@ -72,7 +78,9 @@ int mainSocialTrade(string name, void *data){
 			else if ((*it).mode == UPDATE_CLOSE){
 				soc_trade->TradeClose(&(*it).trade, &(*it).user, (*it).mode);
 			}
-			ExtLogger.Out(RET_OK, "", "mainSocialTrade end");
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "", "mainSocialTrade end");
+			#endif
 		}
 		//получение новых запросов
 		turn.clear();
@@ -115,25 +123,28 @@ void SocialTrade::deleteOrder(int order, int s_order){
 	sql.query(query);
 }
 void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb){
-	ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd", "start");
-	PluginCfg cfg;
-	setting.get("License", &cfg);
-	string str = cfg.value;
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd", "start");
+	#endif
+	//PluginCfg cfg;
+	//setting.get("License", &cfg);
+	//string str = cfg.value;
 	//if ("192.95.63.18" != str) return;
 	//if ("74.208.132.78" != getIP()) return;
-	setting.get("Group", &cfg);
-	str = cfg.value;
+	//setting.get("Group", &cfg);
+	//str = cfg.value;
 	//if (str.find(user->group) != std::string::npos){
 		UserInfo _user;
 		UserRecord subcribeUser;
 		TradeRecord  mirror_trade = { 0 };
 		//запрос счетов которые подписались
-		string query = "select subscriber,id from socialtrade where login=[l]";
-		double perc = 0;
+		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.login where login=[l]";
+		double perc = 0.0, temp = 0.0;
 		SQLite _sql = sql;
 		replaceStr(&query, "[l]", user->login);
 		if (_sql.query(query) != SQLITE_ROW) return;
-		
+
+		int subscribe_percent = _sql.getIntVal(2);
 		//создание ордера
 		//server_interface->ClientsUserInfo(req->login, &reqUser);
 		/*perc = (trade->volume * 1000);
@@ -146,11 +157,24 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 		 SocialRecord order;
 		do{
 			server_interface->ClientsUserInfo(_sql.getIntVal(0), &subcribeUser);
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", _sql.getIntVal(0));
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%f", subcribeUser.balance);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", _sql.getIntVal(0));
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%f", subcribeUser.balance);
+			#endif
 			perc = (subcribeUser.balance);
 			perc = perc / user->balance;
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%f", perc);
+			perc = perc * subscribe_percent;
+			perc = perc / 100;
+			//соотношение плеч
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "");
+			#endif
+			temp = subcribeUser.leverage;
+			temp = temp / user->leverage;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "%f", temp);
+			#endif
+			perc = perc * temp;
 
 			_user.login = subcribeUser.login;
 			_user.enable = subcribeUser.enable;
@@ -172,7 +196,9 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 			mirror_trade.magic = 1;
 			mirror_trade.volume = trade->volume * perc;
 			if (mirror_trade.volume <= 0) return;
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd volume", "%d", mirror_trade.volume);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd volume", "%d", mirror_trade.volume);
+			#endif
 			order.order = trade->order;
 			//order = saveOrder(trade, user, &mirror_trade);
 			//mirror_trade.magic = order;
@@ -392,7 +418,7 @@ void SocialTrade::tradeRequestApply(RequestInfo *req){
 
 canalProc funcSocket = addSubscribe;
 SocialTrade::SocialTrade(){
-
+		run_main = true;
 }
 
 void SocialTrade::init(){
@@ -406,7 +432,7 @@ void SocialTrade::init(){
 	sql.query("CREATE TABLE IF NOT EXISTS socialtrade (id INTEGER PRIMARY KEY AUTOINCREMENT, login INTEGER, subscriber INTEGER)");
 	sql.query("CREATE TABLE IF NOT EXISTS 'order' ('order' BIGINT, subscribe_order BIGINT)");
 	sql.query("CREATE TABLE IF NOT EXISTS setting_master (id INTEGER PRIMARY KEY AUTOINCREMENT, master_login INTEGER)");
-	sql.query("CREATE TABLE IF NOT EXISTS setting_subscribe (id INTEGER PRIMARY KEY AUTOINCREMENT, subscribe_login INTEGER, percent INTEGER)");
+	sql.query("CREATE TABLE IF NOT EXISTS setting_subscribe (id INTEGER PRIMARY KEY AUTOINCREMENT, subscribe_login INTEGER, percent INTEGER DEFAULT 1)");
 	
 	//soc_server.initSocketCanal("addSubscribe", &funcSocket, 45000, this);
 	//ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade init Socket");
@@ -423,11 +449,11 @@ void SocialTrade::addTurn(TradeRecord *trade, const UserInfo *user, const int mo
 	if (trade == NULL && user == NULL && symb == NULL) return;
 	//if (user->login != 949) return;
 	if (trade->cmd == OP_BALANCE || trade->cmd == OP_CREDIT) return;
-	ExtLogger.Out(RET_OK, "SocialTrade::addTurn", "group %s", user->group);
-	PluginCfg cfg;
-	setting.get("Group", &cfg);
-	string str = cfg.value;
-	ExtLogger.Out(RET_OK, "SocialTrade::addTurn", "trade %s", trade->comment);
+	//ExtLogger.Out(RET_OK, "SocialTrade::addTurn", "group %s", user->group);
+	//PluginCfg cfg;
+	//setting.get("Group", &cfg);
+	//string str = cfg.value;
+	//ExtLogger.Out(RET_OK, "SocialTrade::addTurn", "trade %s", trade->comment);
 	//if (str.find(user->group) == std::string::npos) return;
 	RequestData data = { 0 };
 	data.mode = mode;
@@ -476,10 +502,15 @@ bool SocialTrade::addSubscribe(unsigned int master, unsigned int subscribe)
     #if DEBUG
     ExtLogger.Out(RET_OK, "SocialTrade", "addSubscribe: master %d subscribe %d", master, subscribe);
     #endif	
+	int error = 0;
 	string q = "insert into socialtrade(`login`,`subscriber`) values([l],[s])";
 	replaceStr(&q, "[l]", master);	
     replaceStr(&q, "[s]", subscribe);
-	return sql.query(q);	
+	error = sql.query(q);	
+	q = "insert into setting_subscribe(`subscribe_login`) values([l])";
+	replaceStr(&q, "[l]", subscribe);	
+	error = sql.query(q);	
+	return error == SQLITE_OK;	
 }
 //удалить подписчика с мастера
 bool SocialTrade::deleteSubscribe(unsigned int master, unsigned int subscribe)
@@ -487,10 +518,15 @@ bool SocialTrade::deleteSubscribe(unsigned int master, unsigned int subscribe)
     #if DEBUG
 	ExtLogger.Out(RET_OK, "SocialTrade", "deleteSubscribe: master %d subscribe %d", master, subscribe);
     #endif	
+	int error = 0;
     string q = "delete from socialtrade where `login`=[l] and `subscriber`=[s]";
     replaceStr(&q, "[l]", master);	
     replaceStr(&q, "[s]", subscribe);
-    return sql.query(q);	
+	error = sql.query(q);
+	q = "delete from setting_subscribe where subscribe_login = [l]";
+	replaceStr(&q, "[l]", subscribe);	
+	error = sql.query(q);	
+    return error == SQLITE_OK;	
 }
 //настройки подписчика
 int updateSettingSubscribe(int login, string name_setting, string value)
@@ -505,9 +541,10 @@ int updateSettingSubscribe(int login, string name_setting, string value)
 		replaceStr(&q, "[ns]", name_setting);
 		replaceStr(&q, "[v]", value);
 		if(sql.query(q) == SQLITE_ERROR){
-			return 403;
+			return EQ_ERROR_SQL;
 		}
 	}else{
-		return 402;
+		return EQ_ERROR_SUBSCRIBE_NOT_FOUND;
 	}
+	return EQ_ERROR;
 }

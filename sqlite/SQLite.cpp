@@ -40,8 +40,20 @@ void SQLite::init(string name, string path = ""){
 	/*GetModuleFileNameA(NULL, tmp, sizeof(tmp)-16);
 	path = tmp;
 	path.erase(ProgramPath.find_last_of("\\"));	*/
+	
 	_path.append("\\");
 	_path.append(name);
+	//создание файла если нет
+	FILE *f;
+	try{
+		f = fopen(_path.c_str(), "a+");
+		if(f != NULL)
+			fclose(f);
+	}catch(const exception &e){
+		ExtLogger.Out(RET_OK, "SQLite::init error ", "%s", e.what());
+		if(f != NULL)
+			fclose(f);
+	}
 	if (sqlite3_open_v2(_path.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) error = 100;
 	nextStep = true;
 }

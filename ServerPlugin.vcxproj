@@ -138,7 +138,8 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <AdditionalOptions> /Oy- %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Oy- %(AdditionalOptions)</AdditionalOptions>
+      <AssemblerOutput>All</AssemblerOutput>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -176,7 +177,6 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="ServerPlugin.cpp" />
     <ClCompile Include="Setting.cpp" />
-    <ClCompile Include="SettingUser.cpp" />
     <ClCompile Include="SocialTrade.cpp" />
     <ClCompile Include="SocketServer.cpp" />
     <ClCompile Include="sqlite\source\sqlite3.c" />
@@ -191,7 +191,6 @@
     <ClInclude Include="include\MT4ServerAPI.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Setting.h" />
-    <ClInclude Include="SettingUser.h" />
     <ClInclude Include="SocialTrade.h" />
     <ClInclude Include="SocketServer.h" />
     <ClInclude Include="sqlite\source\sqlite3.h" />
@@ -199,6 +198,7 @@
     <ClInclude Include="sqlite\SQLite.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="sync.h" />
+    <ClInclude Include="var.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ServerPlugin.rc" />

@@ -24,49 +24,61 @@ SocialTrade trade;
 //| DLL entry point                                                  |
 //+------------------------------------------------------------------+
 BOOL APIENTRY DllMain(HANDLE hModule,DWORD  ul_reason_for_call,LPVOID lpReserved)
-  {
+{
 //---
-   char tmp[256];
-   string ProgramPath;
-   switch(ul_reason_for_call)
-     {
-      case DLL_PROCESS_ATTACH:
-         //--- получим собсвенное имя
-		//GetCurrentDirectoryA(sizeof(tmp)-16, tmp);
-		GetModuleFileNameA((HMODULE)hModule, tmp, sizeof(tmp)-16);
-		ProgramPath = tmp;
-		ProgramPath.erase(ProgramPath.find_last_of("\\"));
-		ProgramPath.append("\\copytrade.log");
-		ExtLogger.Initialize(ProgramPath.c_str());
-		ExtLogger.Out(CmdOK, NULL, ProgramPath.c_str());
-		ProgramPath.erase(ProgramPath.find_last_of("\\"));
-		//sqlite3_open_v2("database.s3db", &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-		sql.init(ProgramPath, "copytrade.s3db");
-		setting.init();		
-		//sqlite3_open_v2(ProgramPath.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-		//soc_server.initCanal("test", (canalProc *)sock, NULL);
-         break;
-      case DLL_THREAD_ATTACH:
-      case DLL_THREAD_DETACH:
-         break;
-      case DLL_PROCESS_DETACH:
-         break;
-     }
+char tmp[256];
+string ProgramPath;
+switch(ul_reason_for_call)
+    {
+    case DLL_PROCESS_ATTACH:
+        //--- получим собсвенное имя
+	//GetCurrentDirectoryA(sizeof(tmp)-16, tmp);
+	GetModuleFileNameA((HMODULE)hModule, tmp, sizeof(tmp)-16);
+	ProgramPath = tmp;
+	ProgramPath.erase(ProgramPath.find_last_of("\\"));
+	ProgramPath.append("\\copytrade.log");
+	ExtLogger.Initialize(ProgramPath.c_str());
+	ExtLogger.Out(CmdOK, NULL, ProgramPath.c_str());
+	ProgramPath.erase(ProgramPath.find_last_of("\\"));
+	//sqlite3_open_v2("database.s3db", &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+	#if DEBUG
+		ExtLogger.Out(CmdOK, NULL, "Init Sqlite");
+	#endif
+	sql.init(ProgramPath, "copytrade.s3db");
+	#if DEBUG
+		ExtLogger.Out(CmdOK, NULL, "Init Setting");
+	#endif
+	setting.init();		
+	#if DEBUG
+		ExtLogger.Out(CmdOK, NULL, "Init trade");
+	#endif
+	trade.init();
+	//sqlite3_open_v2(ProgramPath.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+	//soc_server.initCanal("test", (canalProc *)sock, NULL);
+        break;
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+        break;
+    case DLL_PROCESS_DETACH:
+        break;
+    }
 //---
-   return(TRUE);
+return(TRUE);
   }
 
 //+------------------------------------------------------------------+
 //| Получение информации о плагине. Этот хук всегда должен быть!!!   |
 //+------------------------------------------------------------------+
-void APIENTRY MtSrvAbout(PluginInfo *info){
+void APIENTRY MtSrvAbout(PluginInfo *info)
+{
 	if (info)
 		memcpy(info, &ExtPluginInfo, sizeof(PluginInfo));
 }
 //+------------------------------------------------------------------+
 //| Инцилизация и получения указателя на серверный интерфейс         |
 //+------------------------------------------------------------------+
-int APIENTRY MtSrvStartup(CServerInterface *server){
+int APIENTRY MtSrvStartup(CServerInterface *server)
+{
 	//--- проверим все, в том числе и версию сервера
 	if (server == NULL)                        return(FALSE);
 	if (server->Version() != ServerApiVersion) return(FALSE);
@@ -78,7 +90,8 @@ int APIENTRY MtSrvStartup(CServerInterface *server){
 //+------------------------------------------------------------------+
 //| Завершение плагина                                               |
 //+------------------------------------------------------------------+
-void APIENTRY MtSrvCleanup(void){
+void APIENTRY MtSrvCleanup(void)
+{
 
 }
 
@@ -183,8 +196,8 @@ int  APIENTRY MtSrvTradeTransaction(TradeTransInfo* trans, const UserInfo *user,
 
 int APIENTRY MtSrvTelnet(const ULONG ip,char *buffer,const int size)
 {
-    int retrun = size;
-    bool error = true;
+	int retrun = 0;
+    int error = 0;
      if(memcmp(buffer,"EQVOLACOPYTRADESYSTEM",21) != 0){
          int comand = 0;
 		 int master = 0;
@@ -222,9 +235,25 @@ int APIENTRY MtSrvTelnet(const ULONG ip,char *buffer,const int size)
          case 102://изменения настроек мастера
 
              break;         
+		 case 103: //изменения настроек подписчика процента нагрузки на счет
+			 int percent = 0, login = 0;
+			 GetIntParam(buffer, "PERCENT=", &percent);
+			 GetIntParam(buffer, "LOGIN=", &percent);
+			 if(percent && login){
+				char *zSQL = sqlite3_mprintf("update setting_subscribe set percent = %d where subscribe_login = %d", percent, login);
+				if(sql.query(zSQL) == SQLITE_OK){
+					retrun = _snprintf(buffer,size-1,"200&");
+				}else{
+					retrun = _snprintf(buffer,size-1,"%d&Addition error in the database", EQ_ERROR_SQL);
+				}
+				sqlite3_free(zSQL);
+			 }else{
+				 retrun = _snprintf(buffer,size-1,"%d&", EQ_ERROR);
+			 }
+
+			 break;
          }
     
      }
     return retrun;
 }
-

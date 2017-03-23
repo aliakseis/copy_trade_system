@@ -2,9 +2,11 @@
 #include "SettingUser.h"
 
 
-SettingUser::SettingUser(void)
-{
-	count_column = 1;
+SettingUser::SettingUser(string name,string column[])
+{	
+	memcpy(columns, column, sizeof(column));	
+	table_name = name;
+	count_column = array_count(columns);
 }
 
 
@@ -30,15 +32,15 @@ int SettingUser::updateValueInColumn(string name_column, string value)
 	if(checkExistColumn(name_column)){
 		char *zSQL = sqlite3_mprintf("update %s set %s = '%q'", table_name, name_column, value);
 		if(sql.query(zSQL) == SQLITE_OK){
-
+			return EQ_OK;
 		}else{
-
+			return EQ_ERROR;
 		}
 		sqlite3_free(zSQL);
 	}else{
-
+		return EQ_ERROR_PARAM_NOT_SUPPORTED;
 	}
-	return 0;
+	return EQ_ERROR;
 }
 
 int SettingUser::updateValueInColumn(string name_column, int value)
