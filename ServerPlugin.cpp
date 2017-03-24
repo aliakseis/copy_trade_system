@@ -42,7 +42,7 @@ switch(ul_reason_for_call)
 	ProgramPath.erase(ProgramPath.find_last_of("\\"));
 	//sqlite3_open_v2("database.s3db", &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 	#if DEBUG
-		ExtLogger.Out(CmdOK, NULL, "Init Sqlite");
+		ExtLogger.Out(CmdOK, NULL, "Init Sqlite %s", ProgramPath.c_str());
 	#endif
 	sql.init(ProgramPath, "copytrade.s3db");
 	#if DEBUG

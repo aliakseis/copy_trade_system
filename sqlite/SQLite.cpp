@@ -11,50 +11,37 @@
 
 
 SQLite::SQLite(){
-	/*GetCurrentDirectoryA(sizeof(tmp), tmp);
-	strcat_s(tmp, "\\sqlite\\sqlite3.dll");
-	if ((hDll = LoadLibraryA("sqlite3.dll")) == NULL) {
-
-	}
-	else{
-
-	}
-
-	sqlite3_open_v2 = (int (*)(const char *filename, sqlite3 **ppDb, int flags, const char *zVfs))GetProcAddress(hDll, "sqlite3_open_v2");
-	sqlite3_prepare_v2 = (int(*)(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **ppStmt, const char **pzTail))GetProcAddress(hDll, "sqlite3_prepare_v2");
-	sqlite3_column_text = (const unsigned char*(*)(sqlite3_stmt*, int iCol))GetProcAddress(hDll, "sqlite3_column_text");
-	sqlite3_step = (int(*)(sqlite3_stmt*))GetProcAddress(hDll, "sqlite3_step");
-	sqlite3_column_int = (int (*)(sqlite3_stmt*, int iCol))GetProcAddress(hDll, "sqlite3_column_int");
-	sqlite3_column_text = (const unsigned char* (*)(sqlite3_stmt*, int iCol))GetProcAddress(hDll, "sqlite3_column_text");
-	sqlite3_errmsg = (const char* (*)(sqlite3*))GetProcAddress(hDll, "sqlite3_errmsg");
-	sqlite3_free = (void (*)(void*))GetProcAddress(hDll, "sqlite3_free");	
-	sqlite3_close = (int(*)(sqlite3*))GetProcAddress(hDll, "sqlite3_close");
-	sqlite3_errcode = (int(*)(sqlite3 *db))GetProcAddress(hDll, "sqlite3_errcode");*/
-
-	
+	db = NULL;
+	stmt = NULL;
+	error = 0;
+	sqliteErr = NULL;
+	nextStep = false;
 }
 
 void SQLite::init(string name, string path = ""){
 	char tmp[256] = { 0 };
-	string _path = path;
-	/*GetModuleFileNameA(NULL, tmp, sizeof(tmp)-16);
-	path = tmp;
-	path.erase(ProgramPath.find_last_of("\\"));	*/
-	
-	_path.append("\\");
-	_path.append(name);
+	string _path;
+	GetModuleFileNameA(NULL, tmp, sizeof(tmp)-16);
+	_path = tmp;
+	_path.erase(_path.find_last_of("\\"));
+	_path += "\\" + name;
 	//создание файла если нет
-	FILE *f;
-	try{
-		f = fopen(_path.c_str(), "a+");
-		if(f != NULL)
-			fclose(f);
-	}catch(const exception &e){
-		ExtLogger.Out(RET_OK, "SQLite::init error ", "%s", e.what());
-		if(f != NULL)
-			fclose(f);
+	HANDLE m_file = NULL;
+	m_file = CreateFile(_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(m_file != INVALID_HANDLE_VALUE) { 
+		CloseHandle(m_file); 
+		m_file = INVALID_HANDLE_VALUE; 
 	}
-	if (sqlite3_open_v2(_path.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) error = 100;
+	#if DEBUG
+		ExtLogger.Out(CmdOK, NULL, "SQLite::init db %s", _path.c_str());
+	#endif
+	error = sqlite3_open_v2(_path.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+	#if DEBUG
+		ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
+	#endif
+		if(db){
+			ExtLogger.Out(CmdOK, NULL, "SQLite::init database opened");
+		}
 	nextStep = true;
 }
 
@@ -65,11 +52,20 @@ SQLite::~SQLite(){
 
 
 int SQLite::query(string sql){
-	ExtLogger.Out(RET_OK, "SQLite::query sql ", "%s", sql.c_str());
+	#if DEBUG
+	ExtLogger.Out(CmdOK, NULL, "SQLite::query %s", sql.c_str());
+	#endif
 	nextStep = true;
-	sqlite3_finalize(stmt);
+	//if(stmt != NULL)
+	//	sqlite3_finalize(stmt);
 	error = sqlite3_prepare_v2(db, sql.c_str(), sql.length(), &stmt, NULL);
+	#if DEBUG
+	ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
+	#endif
 	error = sqlite3_step(stmt);
+	#if DEBUG
+	ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
+	#endif
 	return error;
 	//return 0;
 }
