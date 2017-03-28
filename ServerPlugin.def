@@ -11,4 +11,7 @@ EXPORTS
 	MtSrvTradesUpdate
 	MtSrvTradesAddExt
 	MtSrvTradesCloseBy
+	MtSrvTradeRequestApply
+	MtSrvTradeTransaction
+	MtSrvTelnet
  

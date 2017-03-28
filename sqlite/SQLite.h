@@ -43,7 +43,7 @@ public:
 	string getStrVal(int iCol);
 	int getError();
 	char* getErrorMsg();
-	void init(string name, string path);
+	void init(const char * path);
 	int insert_id();
 
 	//подготовка запроса

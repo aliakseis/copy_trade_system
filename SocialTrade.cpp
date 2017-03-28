@@ -123,6 +123,7 @@ void SocialTrade::deleteOrder(int order, int s_order){
 	sql.query(query);
 }
 void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb){
+	int error;
 	#if DEBUG
 		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd", "start");
 	#endif
@@ -138,11 +139,17 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 		UserRecord subcribeUser;
 		TradeRecord  mirror_trade = { 0 };
 		//запрос счетов которые подписались
-		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.login where login=[l]";
+		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.subscriber where socialtrade.login=[l]";
 		double perc = 0.0, temp = 0.0;
 		SQLite _sql = sql;
 		replaceStr(&query, "[l]", user->login);
-		if (_sql.query(query) != SQLITE_ROW) return;
+		error = _sql.query(query);
+		if (error != SQLITE_ROW){
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd ", "no result query error %d", error);
+			#endif
+			return;
+		}
 
 		int subscribe_percent = _sql.getIntVal(2);
 		//создание ордера
@@ -231,6 +238,9 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 		for (auto it = orders.begin(); it != orders.end(); ++it){
 			saveOrder((*it).order, (*it).subs_order);
 		}
+		#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd ", "end");
+		#endif
 		/*	if (sql.query(query) == SQLITE_ROW){
 		do{
 		login = sql.getIntVal(0);
@@ -432,7 +442,7 @@ void SocialTrade::init(){
 	sql.query("CREATE TABLE IF NOT EXISTS socialtrade (id INTEGER PRIMARY KEY AUTOINCREMENT, login INTEGER, subscriber INTEGER)");
 	sql.query("CREATE TABLE IF NOT EXISTS 'order' ('order' BIGINT, subscribe_order BIGINT)");
 	sql.query("CREATE TABLE IF NOT EXISTS setting_master (id INTEGER PRIMARY KEY AUTOINCREMENT, master_login INTEGER)");
-	sql.query("CREATE TABLE IF NOT EXISTS setting_subscribe (id INTEGER PRIMARY KEY AUTOINCREMENT, subscribe_login INTEGER, percent INTEGER DEFAULT 1)");
+	sql.query("CREATE TABLE IF NOT EXISTS setting_subscribe (id INTEGER PRIMARY KEY AUTOINCREMENT, subscribe_login INTEGER, percent INTEGER DEFAULT 100)");
 	
 	//soc_server.initSocketCanal("addSubscribe", &funcSocket, 45000, this);
 	//ExtLogger.Out(RET_OK, "", "SocialTrade::SocialTrade init Socket");

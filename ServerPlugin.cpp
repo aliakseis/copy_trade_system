@@ -44,7 +44,8 @@ switch(ul_reason_for_call)
 	#if DEBUG
 		ExtLogger.Out(CmdOK, NULL, "Init Sqlite %s", ProgramPath.c_str());
 	#endif
-	sql.init(ProgramPath, "copytrade.s3db");
+	ProgramPath.append("\\copytrade.s3db");
+	sql.init(ProgramPath.c_str());
 	#if DEBUG
 		ExtLogger.Out(CmdOK, NULL, "Init Setting");
 	#endif
@@ -177,10 +178,10 @@ void APIENTRY MtSrvTradesUpdate(TradeRecord *_trade, UserInfo *user, const int m
 	ConSymbol symb = { 0 };
 	trade.addTurn(_trade, user, mode, &symb);
 }
-void APIENTRY        MtSrvTradesAddExt(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb, const int mode){
+void APIENTRY MtSrvTradesAddExt(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb, const int mode){
 	ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradesAddExt", "start");
 }
-void APIENTRY        MtSrvTradesCloseBy(TradeRecord *ftrade, TradeRecord *strade, TradeRecord *remaind, ConSymbol *sec, UserInfo *user){
+void APIENTRY MtSrvTradesCloseBy(TradeRecord *ftrade, TradeRecord *strade, TradeRecord *remaind, ConSymbol *sec, UserInfo *user){
 	ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradesCloseBy", "start");
 }
 

@@ -18,24 +18,19 @@ SQLite::SQLite(){
 	nextStep = false;
 }
 
-void SQLite::init(string name, string path = ""){
+void SQLite::init(const char * path){
 	char tmp[256] = { 0 };
-	string _path;
-	GetModuleFileNameA(NULL, tmp, sizeof(tmp)-16);
-	_path = tmp;
-	_path.erase(_path.find_last_of("\\"));
-	_path += "\\" + name;
 	//создание файла если нет
 	HANDLE m_file = NULL;
-	m_file = CreateFile(_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	m_file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(m_file != INVALID_HANDLE_VALUE) { 
 		CloseHandle(m_file); 
 		m_file = INVALID_HANDLE_VALUE; 
 	}
 	#if DEBUG
-		ExtLogger.Out(CmdOK, NULL, "SQLite::init db %s", _path.c_str());
+		ExtLogger.Out(CmdOK, NULL, "SQLite::init db %s", path);
 	#endif
-	error = sqlite3_open_v2(_path.c_str(), &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+	error = sqlite3_open_v2(path, &db, SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 	#if DEBUG
 		ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
 	#endif
@@ -57,7 +52,7 @@ int SQLite::query(string sql){
 	#endif
 	nextStep = true;
 	//if(stmt != NULL)
-	//	sqlite3_finalize(stmt);
+	sqlite3_finalize(stmt);
 	error = sqlite3_prepare_v2(db, sql.c_str(), sql.length(), &stmt, NULL);
 	#if DEBUG
 	ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
