@@ -25,6 +25,8 @@ public:
 	void addTurn(TradeRecord *trade, const UserInfo *user, const int mode, const ConSymbol *symb);
 	void setServerInterface(CServerInterface *param);
 	void tradeRequestApply(RequestInfo *req);
+	void tradeRequestApply(TradeTransInfo* trans, const UserInfo *user);
+	void tradeRequestApply(RequestInfo *request, const int isdemo, int *request_id);
 	void tradesAdd(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb);
 	void tradesUpdate(TradeRecord *trade, UserInfo *user, const int mode);
 	void TradeAdd(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb);

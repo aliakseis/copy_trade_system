@@ -1,6 +1,8 @@
 #include "../StdAfx.h"
 #include "SQLite.h"
+#if DEBUG
 #include "../Logger.h"
+#endif
 /*
 *
 */
@@ -21,12 +23,12 @@ SQLite::SQLite(){
 void SQLite::init(const char * path){
 	char tmp[256] = { 0 };
 	//создание файла если нет
-	HANDLE m_file = NULL;
+	/*HANDLE m_file = NULL;
 	m_file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(m_file != INVALID_HANDLE_VALUE) { 
 		CloseHandle(m_file); 
 		m_file = INVALID_HANDLE_VALUE; 
-	}
+	}*/
 	#if DEBUG
 		ExtLogger.Out(CmdOK, NULL, "SQLite::init db %s", path);
 	#endif
@@ -35,13 +37,17 @@ void SQLite::init(const char * path){
 		ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
 	#endif
 		if(db){
-			ExtLogger.Out(CmdOK, NULL, "SQLite::init database opened");
+			#if DEBUG
+				ExtLogger.Out(CmdOK, NULL, "SQLite::init database opened");
+			#endif
 		}
 	nextStep = true;
 }
 
 
 SQLite::~SQLite(){
+	sqlite3_finalize(stmt);
+	stmt = NULL;
 	sqlite3_close(db);
 }
 
@@ -51,8 +57,13 @@ int SQLite::query(string sql){
 	ExtLogger.Out(CmdOK, NULL, "SQLite::query %s", sql.c_str());
 	#endif
 	nextStep = true;
-	//if(stmt != NULL)
-	sqlite3_finalize(stmt);
+	if(stmt != NULL){
+		error = sqlite3_finalize(stmt);
+		stmt = NULL;
+	}
+	#if DEBUG
+	ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
+	#endif
 	error = sqlite3_prepare_v2(db, sql.c_str(), sql.length(), &stmt, NULL);
 	#if DEBUG
 	ExtLogger.Out(CmdOK, NULL, "SQLite::init error %d", error);
@@ -66,12 +77,20 @@ int SQLite::query(string sql){
 }
 
 SQLiteResult SQLite::query_result(string sql){
-	ExtLogger.Out(RET_OK, "SQLite::query sql ", "%s", sql.c_str());
+	#if DEBUG
+	ExtLogger.Out(RET_OK, "SQLite::query_result sql ", "%s", sql.c_str());
+	#endif;
 	nextStep = true;
-	sqlite3_finalize(stmt);
-	error = sqlite3_prepare_v2(db, sql.c_str(), sql.length(), &stmt, NULL);
-	return SQLiteResult(stmt);
+	//sqlite3_finalize(stmt);
+	return SQLiteResult(db, sql.c_str());
 	//return 0;
+}
+void SQLite::query_result(SQLiteResult *res, string sql)
+{
+	#if DEBUG
+	ExtLogger.Out(RET_OK, "SQLite::query_result sql ", "%s", sql.c_str());
+	#endif;
+	res->init(db, sql.c_str());
 }
 
 
@@ -111,16 +130,25 @@ int SQLite::getError(){
 }
 char* SQLite::getErrorMsg(){
 	char *msg = (char *)sqlite3_errmsg(db);
+	#if DEBUG
 	ExtLogger.Out(RET_OK, "SQLite::error", "%s", msg);
+	#endif
 	return msg;
 }
 int SQLite::insert_id(){
 	return sqlite3_last_insert_rowid(db);
 }
+int SQLite::free()
+{
+	error = sqlite3_finalize(stmt);
+	stmt = NULL;
+	return error;
+}
 //подготовка запроса
 void SQLite::prepare(string query)
 {
 	sqlite3_finalize(stmt);
+	stmt = NULL;
 	error = sqlite3_prepare_v2(db, query.c_str(), query.length(), &stmt, NULL);
 }
 //прикрепление данных к меткам в запросе
@@ -135,22 +163,34 @@ void SQLite::bindParam(string param, int value)
 
 
 SQLite sql;
+/*
+@param [IN] *db sqlite открытая база
+@param [IN] *sql запрос
+*/
+SQLiteResult::SQLiteResult(sqlite3 *db, const char *sql){
+	error = sqlite3_prepare_v2(db, sql, strlen(sql), &_stmt, NULL);
+}
+SQLiteResult::SQLiteResult(){
 
-SQLiteResult::SQLiteResult(sqlite3_stmt *stmt){
-	_stmt = new sqlite3_stmt*;
-	memcpy(_stmt, stmt, sizeof(sqlite3_stmt*));
+}
+int SQLiteResult::init(sqlite3 *db, const char *sql)
+{
+	error = sqlite3_prepare_v2(db, sql, strlen(sql), &_stmt, NULL);
+	return error;
 }
 SQLiteResult::~SQLiteResult(){
-	sqlite3_finalize(*_stmt);
+	sqlite3_finalize(_stmt);
+	_stmt = NULL;
 }
 int SQLiteResult::next(){
-	return sqlite3_step(*_stmt);
+	error = sqlite3_step(_stmt); 
+	return error;
 }
 int SQLiteResult::getIntVal(int iCol){
-	return sqlite3_column_int(*_stmt, iCol);
+	return sqlite3_column_int(_stmt, iCol);
 }
 string SQLiteResult::getStrVal(int iCol){
-	string str = (char *)sqlite3_column_text(*_stmt, iCol);
+	string str = (char *)sqlite3_column_text(_stmt, iCol);
 	return str;
 }
 SQLiteResult& SQLiteResult::operator = (const SQLiteResult &right){
@@ -158,6 +198,12 @@ SQLiteResult& SQLiteResult::operator = (const SQLiteResult &right){
 	if (this == &right) {
 		return *this;
 	}
-	memcpy(_stmt, right._stmt, sizeof(right._stmt));
+	//memcpy(_stmt, right._stmt, sizeof(right._stmt));
 	return *this;
+}
+int SQLiteResult::free()
+{
+	error = sqlite3_finalize(_stmt);
+	_stmt = NULL;
+	return error;
 }

@@ -1,17 +1,17 @@
 EXPORTS
 	MtSrvAbout
 	MtSrvStartup
+	MtSrvCleanup
 	MtSrvPluginCfgAdd
 	MtSrvPluginCfgSet
+	MtSrvPluginCfgDelete
 	MtSrvPluginCfgGet
 	MtSrvPluginCfgNext
-	MtSrvPluginCfgDelete
 	MtSrvPluginCfgTotal
-	MtSrvTradesAdd
-	MtSrvTradesUpdate
-	MtSrvTradesAddExt
-	MtSrvTradesCloseBy
 	MtSrvTradeRequestApply
+	MtSrvTradeRequestRestore
 	MtSrvTradeTransaction
 	MtSrvTelnet
- 
+	MtSrvTradeRequestFilter
+	MtSrvTradesAdd
+	MtSrvTradesUpdate

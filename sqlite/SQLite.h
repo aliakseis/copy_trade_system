@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _SQLITE_H
+#define _SQLITE_H
 //#include "source\sqlite3ext.h"
 #include "source\sqlite3.h"
 #include <string>
@@ -36,7 +38,9 @@ private:
 	//
 public:
 	int query(string sql);
+	//запрос с результатом
 	SQLiteResult query_result(string sql);
+	void query_result(SQLiteResult *res, string sql);
 	// следующая строка таблицы
 	int next();
 	int getIntVal(int iCol);
@@ -45,6 +49,7 @@ public:
 	char* getErrorMsg();
 	void init(const char * path);
 	int insert_id();
+	int free();
 
 	//подготовка запроса
 	void prepare(string query);
@@ -59,14 +64,20 @@ extern SQLite sql;
 
 class SQLiteResult{
 public:
-	SQLiteResult(sqlite3_stmt *stmt);
+	SQLiteResult(sqlite3 *db, const char *sql);
+	SQLiteResult();
 	~SQLiteResult();
 	int next();
 	int getIntVal(int iCol);
 	string getStrVal(int iCol);
 	SQLiteResult& operator=(const SQLiteResult &right);
+	int free();
+	int getError(){return error;}
+	//инициализация(если использовали контрутор без параметров)
+	int init(sqlite3 *db, const char *sql);
 private:
-	sqlite3_stmt **_stmt;
+	sqlite3_stmt *_stmt;
+	int error;
 };
 
 /*
@@ -105,3 +116,4 @@ SQLITE_API sqlite3_uint64 SQLITE_STDCALL sqlite3_msize(void*);
 SQLITE_API int SQLITE_STDCALL sqlite3_close_v2(sqlite3*);
 */
 
+#endif

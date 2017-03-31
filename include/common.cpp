@@ -17,16 +17,18 @@ static const double ExtDecimalArray[9]={ 1.0, 10.0, 100.0, 1000.0, 10000.0, 1000
 //+------------------------------------------------------------------+
 //| Reading of the integer parameter                                 |
 //+------------------------------------------------------------------+
-int GetIntParam(LPCSTR string,LPCSTR param,int *data)
+int GetIntParam(LPCSTR string, LPCSTR param,int *data)
   {
-//--- проверки
-   if(string==NULL || param==NULL || data==NULL) return(FALSE);
-//--- пропускаем пробелы
+	//--- проверки
+   if(string==NULL || param==NULL || data==NULL) return(false);
+	//--- пропускаем пробелы
    while(*string==' ') string++;
-   if(memcmp(string,param,strlen(param))!=0)     return(FALSE);
-//--- все нормально
-   *data=atoi(&string[strlen(param)]);
-   return(TRUE);
+	//--- все нормально
+   char * pch = strstr((char *)string, param);
+   //проверяем нахождения
+   if(memcmp(pch,param,strlen(param))!=0)     return(false);
+   *data=atoi(&pch[strlen(param)]);
+   return(true);
   }
 //+------------------------------------------------------------------+
 //| Reading of the string parameter                                  |

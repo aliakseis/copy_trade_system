@@ -71,6 +71,7 @@ int mainSocialTrade(string name, void *data){
 				ExtLogger.Out(RET_OK, "mainSocialTrade ", "%d", (*it).mode);
 			#endif
 			if ((*it).mode == -1){
+				//soc_trade->tradeRequestApply(&(*it).trade_info, &(*it).user);
 				soc_trade->tradesAdd(&(*it).trade, &(*it).user, &(*it).symb);
 			}else if ((*it).mode == UPDATE_NORMAL){
 				soc_trade->tradesUpdate(&(*it).trade, &(*it).user, (*it).mode);
@@ -96,14 +97,14 @@ struct SocialRecord{
 	int subs_order;
 };
 int SocialTrade::saveOrder(int order, int subs_order){
-	string query = "insert into `order`(`order`, subscribe_order) values([o],[so])";
+	string query = "insert into `order`(`order`, `subscribe_order`) values([o],[so])";
 	replaceStr(&query,"[o]",order);
 	replaceStr(&query, "[so]", subs_order);
 	sql.query(query);
 	return sql.insert_id();
 }
 void SocialTrade::updateOrder(int id, int subs_order){
-	string query = "update `order` set subscribe_order=[o] where id=[i]";
+	string query = "update `order` set `subscribe_order`=[o] where `id`=[i]";
 	replaceStr(&query, "[o]", subs_order);
 	replaceStr(&query, "[i]", id);
 	sql.query(query);
@@ -117,7 +118,7 @@ TradeRecord SocialTrade::getOrder(int order){
 	return trade;
 }
 void SocialTrade::deleteOrder(int order, int s_order){
-	string query = "delete from `order` where order=[o] and subcribe_order=[so]";
+	string query = "delete from `order` where `order`=[o] and `subscribe_order`=[so]";
 	replaceStr(&query, "[o]", order);
 	replaceStr(&query, "[so]", s_order);
 	sql.query(query);
@@ -127,45 +128,32 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 	#if DEBUG
 		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd", "start");
 	#endif
-	//PluginCfg cfg;
-	//setting.get("License", &cfg);
-	//string str = cfg.value;
-	//if ("192.95.63.18" != str) return;
-	//if ("74.208.132.78" != getIP()) return;
-	//setting.get("Group", &cfg);
-	//str = cfg.value;
-	//if (str.find(user->group) != std::string::npos){
-		UserInfo _user;
-		UserRecord subcribeUser;
-		TradeRecord  mirror_trade = { 0 };
+		UserInfo _user = {0};
+		UserRecord subcribeUser = {0};
+		TradeTransInfo mirror_info = {0};
+		//TradeRecord  mirror_trade = { 0 };
 		//запрос счетов которые подписались
 		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.subscriber where socialtrade.login=[l]";
 		double perc = 0.0, temp = 0.0;
-		SQLite _sql = sql;
+		//SQLite _sql = sql;
 		replaceStr(&query, "[l]", user->login);
-		error = _sql.query(query);
-		if (error != SQLITE_ROW){
+		//error = sql.query(query);
+		SQLiteResult res = sql.query_result(query);
+		res.next();
+		if (res.getError() != SQLITE_ROW){
 			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd ", "no result query error %d", error);
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd ", "no result query error %d", res.getError());
 			#endif
 			return;
 		}
 
-		int subscribe_percent = _sql.getIntVal(2);
-		//создание ордера
-		//server_interface->ClientsUserInfo(req->login, &reqUser);
-		/*perc = (trade->volume * 1000);
-		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd", "%f", perc);
-		perc = (((perc) / user->leverage) * 100);
-		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd leverage", "%d", user->leverage);
-		perc = perc / user->balance;
-		ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd balance", "%f", user->balance);*/
+		int subscribe_percent = res.getIntVal(2);
 		 list<SocialRecord> orders;
 		 SocialRecord order;
 		do{
-			server_interface->ClientsUserInfo(_sql.getIntVal(0), &subcribeUser);
+			server_interface->ClientsUserInfo(res.getIntVal(0), &subcribeUser);
 			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", _sql.getIntVal(0));
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", res.getIntVal(0));
 				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%f", subcribeUser.balance);
 			#endif
 			perc = (subcribeUser.balance);
@@ -183,57 +171,44 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 			#endif
 			perc = perc * temp;
 
-			_user.login = subcribeUser.login;
-			_user.enable = subcribeUser.enable;
-			_user.enable_change_password = subcribeUser.enable_change_password;
-			_user.enable_read_only = subcribeUser.enable_read_only;
-			_user.leverage = subcribeUser.leverage;
-			_user.agent_account = subcribeUser.agent_account;
-			_user.credit = subcribeUser.credit;
-			_user.balance = subcribeUser.balance;
-			_user.prevbalance = subcribeUser.prevbalance;
-			COPY_STR(_user.group, subcribeUser.group);
-			COPY_STR(_user.name, subcribeUser.name);
+			getUserInfo(subcribeUser.login, &_user);
+
+			mirror_info.type = TT_ORDER_IE_OPEN;
+			mirror_info.flags = TT_FLAG_NONE;
+			mirror_info.cmd = trade->cmd;
+			mirror_info.order = 0;
+			mirror_info.orderby = 0;
+			COPY_STR(mirror_info.symbol, trade->symbol);
+			mirror_info.volume = trade->volume * perc;
+			mirror_info.price = trade->open_price;
+			mirror_info.sl = trade->sl;
+			mirror_info.tp = trade->tp;
+			mirror_info.ie_deviation = 0;
+			_snprintf_s(mirror_info.comment, sizeof(mirror_info.comment) - 1, "coverage for #%d", trade->order);
+			mirror_info.expiration = 0;
 
 
-			memcpy(&mirror_trade, trade, sizeof(TradeRecord));
+			/*memcpy(&mirror_trade, trade, sizeof(TradeRecord));
 			mirror_trade.order = 0;
 			mirror_trade.login = _user.login;
 			mirror_trade.profit = 0;
 			mirror_trade.magic = 1;
-			mirror_trade.volume = trade->volume * perc;
-			if (mirror_trade.volume <= 0) return;
+			mirror_trade.volume = trade->volume * perc;*/
+			if (mirror_info.volume <= 0) return;
 			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd volume", "%d", mirror_trade.volume);
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd volume", "%d", mirror_info.volume);
 			#endif
 			order.order = trade->order;
-			//order = saveOrder(trade, user, &mirror_trade);
-			//mirror_trade.magic = order;
-			//--- save mirror order in trade's internal_id
-			_snprintf_s(mirror_trade.comment, sizeof(mirror_trade.comment) - 1, "coverage for #%d", trade->order);
-			//cнятие комисии
-			/*ConGroup group = { 0 };
-			double commision = 0, sum_commision = 0;
-			setting.getParam("Commission brocker", &commision);
-			sum_commision = (commision*(-1)*mirror_trade.volume);
-			sum_commision = sum_commision / 100;
-			if (_user.balance <= 0 && (sum_commision * 3) > _user.balance) return;
-
-			server_interface->GroupsGet(_user.group, &group);
-			server_interface->ClientsChangeBalance(_user.login, &group, sum_commision, "Commission brocker");
-			setting.getParam("Commission master", &commision);
-			sum_commision = (commision*(-1)*mirror_trade.volume);
-			sum_commision = sum_commision / 100;
-			server_interface->ClientsChangeBalance(_user.login, &group, sum_commision, "Commission master");
-			server_interface->GroupsGet(user->group, &group);
-			server_interface->ClientsChangeBalance(user->login, &group, abs(sum_commision), "Commission master");
-
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd user", "%f", abs(sum_commision));*/
-			order.subs_order = server_interface->OrdersAdd(&mirror_trade, &_user, symb);
-			orders.push_back(order);
-			//mirror_trade.order = order;
-		//	updateOrder(mirror_trade.magic, &mirror_trade);
-		} while (_sql.next() == SQLITE_ROW);
+			//_snprintf_s(mirror_trade.comment, sizeof(mirror_trade.comment) - 1, "coverage for #%d", trade->order);
+		
+			//order.subs_order = server_interface->OrdersAdd(&mirror_trade, &_user, symb);
+			order.subs_order = server_interface->OrdersOpen(&mirror_info, &_user);
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::OrdersOpen #order", "%d", order.subs_order);
+			#endif
+			if(order.subs_order)
+				orders.push_back(order);
+		} while (res.next() == SQLITE_ROW);
 		
 		for (auto it = orders.begin(); it != orders.end(); ++it){
 			saveOrder((*it).order, (*it).subs_order);
@@ -241,15 +216,6 @@ void SocialTrade::tradesAdd(TradeRecord *trade, const UserInfo *user, const ConS
 		#if DEBUG
 			ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd ", "end");
 		#endif
-		/*	if (sql.query(query) == SQLITE_ROW){
-		do{
-		login = sql.getIntVal(0);
-		trans.orderby = login;
-		trans.volume = req->trade.volume;
-		server_interface->OrdersOpen(&trans, &user);
-		} while (sql.next() == SQLITE_ROW);
-		}*/
-	//}
 }
 void SocialTrade::tradesUpdate(TradeRecord *trade, UserInfo *user, const int mode){
 	if (trade == NULL || user == NULL) return;
@@ -257,23 +223,111 @@ void SocialTrade::tradesUpdate(TradeRecord *trade, UserInfo *user, const int mod
 	//if (trade->cmd != OP_BUY && trade->cmd != OP_SELL) return;
 	//--- check if this is cyclic hook
 	//--- this is activation of opened order?
+	TradeTransInfo mirror_info = {0};
 	ConSymbol symb = { 0 };
 	server_interface->SymbolsGet(trade->symbol, &symb);
 	//проверка ордера на обновление
 	string query = "select subscribe_order from `order` where `order`=[o]";
 	replaceStr(&query, "[o]", trade->order);
-	if (sql.query(query) == SQLITE_ROW){
-		UserInfo _user;
+	SQLiteResult res;
+	sql.query_result(&res, query);	
+	if (res.next() == SQLITE_ROW){
+		UserInfo subcribeUser = {0};
 		TradeRecord _trade = { 0 };
+		SQLiteResult res_setting;
+		int error = 0;
 		do{
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d", sql.getIntVal(0));
-			server_interface->OrdersGet(sql.getIntVal(0), &_trade);
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d", res.getIntVal(0));
+			#endif
+
+			server_interface->OrdersGet(res.getIntVal(0), &_trade);
+			getUserInfo(_trade.login, &subcribeUser);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", res.getIntVal(0));
+			#endif
+
+			query = "select percent from setting_subscribe where subscribe_login = [l]";
+			replaceStr(&query, "[l]", _trade.login);
+			sql.query_result(&res_setting, query);
+			//получение процента нагрузки
+			int subscribe_percent;
+			if(res_setting.next() == SQLITE_ROW){
+				subscribe_percent= res_setting.getIntVal(0);
+			}else{
+				subscribe_percent = 100;
+			}
+			double perc = 0;
+			perc = (subcribeUser.balance);
+			perc = perc / user->balance;
+			perc = perc * subscribe_percent;
+			perc = perc / 100;
+			//соотношение плеч
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "");
+			#endif
+			double temp = 0;
+			temp = subcribeUser.leverage;
+			temp = temp / user->leverage;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "%f", temp);
+			#endif
+			perc = perc * temp;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "%f", perc);
+			#endif
+
+			mirror_info.type = TT_ORDER_MODIFY;
+			mirror_info.flags = TT_FLAG_NONE;
+			mirror_info.cmd = trade->cmd;
+			mirror_info.order = _trade.order;
+			mirror_info.orderby = 0;
+			COPY_STR(mirror_info.symbol, trade->symbol);
+			mirror_info.volume = _trade.volume;
+			mirror_info.price = trade->open_price;
+			mirror_info.sl = trade->sl;
+			mirror_info.tp = trade->tp;
+			mirror_info.ie_deviation = 0;			
+			_snprintf_s(mirror_info.comment, sizeof(mirror_info.comment) - 1, "coverage for #%d", trade->order);
+
+			
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo type ", "%d", mirror_info.type);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo flags ", "%d", mirror_info.flags);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo cmd ", "%d", mirror_info.cmd);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo manaorderger ", "%d", mirror_info.order);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo orderby ", "%d", mirror_info.orderby);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo symbol ", "%s", mirror_info.symbol);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo volume ", "%d",  mirror_info.volume);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo price ", "%f", mirror_info.price);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo sl ", "%f", mirror_info.sl);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo tp ", "%f", mirror_info.tp);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo ie_deviation ", "%d", mirror_info.ie_deviation);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo comment ", "%s", mirror_info.comment);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo expiration ", "%d", mirror_info.expiration);
+			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo crc ", "%d", mirror_info.crc);
+			
+			error = server_interface->OrdersOpen(&mirror_info, &subcribeUser);
+			int request_id = 0;
+			RequestInfo requote={0};
+			requote.login       =subcribeUser.login;
+			strcpy(requote.group,subcribeUser.group);
+			requote.balance     =subcribeUser.balance;
+			requote.credit      =subcribeUser.credit;
+			requote.trade = mirror_info;
+			requote.prices[0] = trade->open_price;
+			requote.prices[1] = trade->open_price;
+			//error = server_interface->RequestsAdd(&requote,FALSE,&request_id);
+
 			_trade.sl = trade->sl;
 			_trade.tp = trade->tp;
 			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d", _trade.order);
-			getUserInfo(_trade.login, &_user);
-			server_interface->OrdersUpdate(&_trade, &_user, mode);
-		} while (sql.next() == SQLITE_ROW);
+			getUserInfo(_trade.login, &subcribeUser);
+			//server_interface->OrdersUpdate(&_trade, &subcribeUser, mode);
+
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d request_id %d", error, request_id);
+			#endif
+		} while (res.next() == SQLITE_ROW);
 	}	
 }
 void SocialTrade::TradeAdd(TradeRecord *trade, const UserInfo *user, const ConSymbol *symb)
@@ -319,68 +373,273 @@ void SocialTrade::TradeAdd(TradeRecord *trade, const UserInfo *user, const ConSy
 void SocialTrade::TradeClose(TradeRecord *trade, UserInfo *user, const int mode)
 {
 	//---
-	m_sync.Lock();
+	//m_sync.Lock();
 	string query = "select subscribe_order from `order` where `order`=[o]";
 	replaceStr(&query, "[o]", trade->order);
 	if (sql.query(query) == SQLITE_ROW){
 		UserInfo _user;
 		TradeRecord _trade = { 0 };
+		TradeTransInfo mirror_info = {0};
 		list<SocialRecord> orders;
 		SocialRecord order;
 		do{
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d", sql.getIntVal(0));
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::TradeClose order", "%d", sql.getIntVal(0));
+			#endif
 			server_interface->OrdersGet(sql.getIntVal(0), &_trade);
 			_trade.close_time = trade->close_time;
 			_trade.close_price = trade->close_price;
 			getUserInfo(_trade.login, &_user);
-			server_interface->TradesCalcProfit(_user.group, &_trade);
-			if (server_interface->OrdersUpdate(&_trade, &_user, mode) == TRUE){
+			//server_interface->TradesCalcProfit(_user.group, &_trade);
+
+			mirror_info.type = TT_ORDER_IE_CLOSE;
+			mirror_info.flags = TT_FLAG_NONE;
+			mirror_info.cmd = trade->cmd;
+			mirror_info.order = _trade.order;
+			mirror_info.orderby = 0;
+			COPY_STR(mirror_info.symbol, trade->symbol);
+			mirror_info.volume = trade->volume;
+			mirror_info.price = trade->close_price;
+			mirror_info.sl = trade->sl;
+			mirror_info.tp = trade->tp;
+			mirror_info.ie_deviation = 0;			
+			_snprintf_s(mirror_info.comment, sizeof(mirror_info.comment) - 1, "coverage for #%d", trade->order);
+
+
+			mirror_info.expiration = 0;
+
+			if(server_interface->OrdersClose(&mirror_info, &_user) == TRUE){
+			//if (server_interface->OrdersUpdate(&_trade, &_user, mode) == TRUE){
 				order.order = trade->order;
-				order.subs_order = sql.getIntVal(0);
+				order.subs_order = _trade.order;
 				orders.push_back(order);
 			}
 		} while (sql.next() == SQLITE_ROW);
+
 		for (auto it = orders.begin(); it != orders.end(); ++it){
 			deleteOrder((*it).order, (*it).subs_order);
 		}
 		
 	}
 	sql.getErrorMsg();
+	//m_sync.Unlock();
+}
+void SocialTrade::tradeRequestApply(RequestInfo *request, const int isdemo, int *request_id)
+{
+	int error;
+	RequestInfo _request;
+	memcpy(&_request, request, sizeof(RequestInfo));
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply", "start");
+	#endif
+		UserInfo _user;
+		UserRecord subcribeUser, master;
 
-	//--- find info...
-	/*if (m_orders != NULL && (pair = (OrdersPair*)bsearch(&trade->order, m_orders, m_orders_total, sizeof(OrdersPair), SearchByOrder)) != NULL)
-	{
-		//--- find order
-		if (ExtServer->OrdersGet(pair->coverage_order, &hedge_trade) != FALSE || strcmp(trade->symbol, hedge_trade.symbol) != 0)
-		{
-			//--- prepare hedge trade
-			hedge_trade.volume = trade->volume;
-			hedge_trade.close_time = trade->close_time;
-			hedge_trade.close_price = trade->close_price;
-			hedge_trade.magic = thread_id;
-			//--- calc order profit
-			if (mode == UPDATE_CLOSE) ExtServer->TradesCalcProfit(m_coverage.group, &hedge_trade);
-			else
-			{
-				hedge_trade.profit = 0;
-				hedge_trade.commission = 0;
-				hedge_trade.storage = 0;
-			}
-			//--- close hedged order
-			if (ExtServer->OrdersUpdate(&hedge_trade, &m_coverage, mode) == FALSE)
-				ExtLogger.Out(CmdErr, NULL, "CoverageBase: coverage order #%d closing error", pair->coverage_order, pair->order);
-			else
-			{
-				ExtLogger.Out(CmdOK, NULL, "CoverageBase: coverage order #%d on '%d' for #%d on '%d' closed", pair->coverage_order, hedge_trade.login,
-					pair->order, trade->login);
-			}
+		server_interface->ClientsUserInfo(request->login, &master);
+		//запрос счетов которые подписались
+		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.subscriber where socialtrade.login=[l]";
+		double perc = 0.0, temp = 0.0;
+		SQLite _sql = sql;
+		replaceStr(&query, "[l]", master.login);
+		error = _sql.query(query);
+		if (error != SQLITE_ROW){
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply ", "no result query error %d", error);
+			#endif
+			return;
 		}
-		else ExtLogger.Out(CmdErr, NULL, "CoverageBase: coverage order #%d finding error for #%d [server]", pair->coverage_order, pair->order);
-		//--- remove pair from buffer
-		TradeCacheRemove(pair);
-	}
-	else ExtLogger.Out(CmdErr, NULL, "CoverageBase: no coverage order for #%d", trade->order);*/
-	m_sync.Unlock();
+
+		int subscribe_percent = _sql.getIntVal(2);
+		 list<SocialRecord> orders;
+		 SocialRecord order;
+		do{
+			server_interface->ClientsUserInfo(_sql.getIntVal(0), &subcribeUser);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply perc ", "%d", _sql.getIntVal(0));
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply perc ", "%f", subcribeUser.balance);
+			#endif
+			perc = (subcribeUser.balance);
+			perc = perc / master.balance;
+			perc = perc * subscribe_percent;
+			perc = perc / 100;
+			//соотношение плеч
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply calc leverage perc ", "");
+			#endif
+			temp = subcribeUser.leverage;
+			temp = temp / master.leverage;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply calc leverage perc ", "%f", temp);
+			#endif
+			perc = perc * temp;
+
+			_user.login = subcribeUser.login;
+			_user.enable = subcribeUser.enable;
+			_user.enable_change_password = subcribeUser.enable_change_password;
+			_user.enable_read_only = subcribeUser.enable_read_only;
+			_user.leverage = subcribeUser.leverage;
+			_user.agent_account = subcribeUser.agent_account;
+			_user.credit = subcribeUser.credit;
+			_user.balance = subcribeUser.balance;
+			_user.prevbalance = subcribeUser.prevbalance;
+			COPY_STR(_user.group, subcribeUser.group);
+			COPY_STR(_user.name, subcribeUser.name);
+			/*
+			   int               login;                      // client login
+			   char              group[16];                  // client group
+			   double            balance;                    // client balance
+			   double            credit;                     // client credit
+			*/
+			_request.id = 0;
+			_request.login = subcribeUser.login;
+			COPY_STR(_request.group, subcribeUser.group);
+			_request.balance = subcribeUser.balance;
+			_request.credit = subcribeUser.credit;
+
+
+			_request.trade.volume = request->trade.volume * perc;
+			_request.gw_volume = request->gw_volume * perc;
+			//mirror_trade.volume = trade->volume * perc;
+			if (_request.trade.volume <= 0) return;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply volume ", "%d", _request.trade.volume);
+			#endif
+				_snprintf_s(_request.trade.comment, sizeof(_request.trade.comment) - 1, "coverage for login #%d", _user.login);
+		
+			error = server_interface->RequestsAdd(&_request, isdemo, request_id);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply RequestsAdd ", "%d request_id %d", error, request_id);
+			#endif
+			//order.subs_order = 
+			//orders.push_back(order);
+		} while (_sql.next() == SQLITE_ROW);
+		
+		for (auto it = orders.begin(); it != orders.end(); ++it){
+			saveOrder((*it).order, (*it).subs_order);
+		}
+		#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply ", "end");
+		#endif
+}
+void SocialTrade::tradeRequestApply(TradeTransInfo* trans, const UserInfo *user)
+{
+	int error;
+	#if DEBUG
+		ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply", "start");
+	#endif
+		UserInfo _user = {0};
+		UserRecord subcribeUser;		
+		//запрос счетов которые подписались
+		string query = "select socialtrade.subscriber, socialtrade.id, setting_subscribe.percent from socialtrade INNER JOIN setting_subscribe ON setting_subscribe.subscribe_login = socialtrade.subscriber where socialtrade.login=[l]";
+		double perc = 0.0, temp = 0.0;
+		//SQLite _sql = sql;
+		replaceStr(&query, "[l]", user->login);
+		SQLiteResult res = sql.query_result(query);
+		res.next();
+		if (res.getError() != SQLITE_ROW){
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply ", "no result query error %d", res.getError());
+			#endif
+			return;
+		}
+
+		int subscribe_percent = res.getIntVal(2);
+		 list<SocialRecord> orders;
+		 SocialRecord order;
+		do{
+			server_interface->ClientsUserInfo(res.getIntVal(0), &subcribeUser);
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply perc ", "%d", res.getIntVal(0));
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply perc ", "%f", subcribeUser.balance);
+			#endif
+			perc = (subcribeUser.balance);
+			perc = perc / user->balance;
+			perc = perc * subscribe_percent;
+			perc = perc / 100;
+			//соотношение плеч
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply calc leverage perc ", "");
+			#endif
+			temp = subcribeUser.leverage;
+			temp = temp / user->leverage;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply calc leverage perc ", "%f", temp);
+			#endif
+			perc = perc * temp;
+
+			/*_user.login = subcribeUser.login;
+			_user.enable = subcribeUser.enable;
+			_user.enable_change_password = subcribeUser.enable_change_password;
+			_user.enable_read_only = subcribeUser.enable_read_only;
+			_user.leverage = subcribeUser.leverage;
+			_user.agent_account = subcribeUser.agent_account;
+			_user.credit = subcribeUser.credit;
+			_user.balance = subcribeUser.balance;
+			_user.prevbalance = subcribeUser.prevbalance;
+			COPY_STR(_user.group, subcribeUser.group);
+			COPY_STR(_user.name, subcribeUser.name);*/
+
+			getUserInfo(subcribeUser.login, &_user);
+
+
+			trans->volume = trans->volume * perc;
+			//mirror_trade.volume = trade->volume * perc;
+			#if DEBUG
+				ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply volume", "%d", trans->volume);
+			#endif
+			if (trans->volume <= 0) return;
+			
+			_snprintf_s(trans->comment, sizeof(trans->comment) - 1, "coverage for login #%d", _user.login);
+
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply TradeTransInfo order ", "%d ", trans->order);
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply TradeTransInfo order_by ", "%d ", trans->orderby);
+			#endif
+			//TradeTransInfo _trans={0};
+			//memcpy(&_trans, trans, sizeof(TradeTransInfo));
+			double profit, free_margin, new_margin, margin, equity;
+			error = server_interface->TradesMarginInfo(&_user, &margin, &free_margin, &equity);
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply TradesMarginInfo ", "%d free_margin %f margin %f equity %f", error,free_margin,margin,equity);
+			#endif
+			error = server_interface->TradesMarginCheck(&_user, trans, &profit, &free_margin, &new_margin);
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply TradesMarginCheck ", "%d free_margin %f new_margin %f profit %f", error,free_margin,new_margin,profit);
+			#endif
+		
+			error = server_interface->OrdersOpen(trans, &_user);
+
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply OrdersOpen ", "login %d #Order %d",_user.login,  error);
+			#endif
+
+			/*RequestInfo requote={0};
+			requote.login       =subcribeUser.login;
+		   strcpy(requote.group,subcribeUser.group);
+		   requote.balance     =subcribeUser.balance;
+		   requote.credit      =subcribeUser.credit;
+		   requote.trade.type  =TT_ORDER_IE_OPEN;
+		   requote.trade.volume=trans->volume;
+		   strcpy(requote.trade.symbol,trans->symbol);
+		   requote.prices[0] = trans->price;
+			requote.prices[1] = trans->price;
+		   //if(ExtServer->HistoryPrices(trans->symbol,requote.prices,NULL,NULL)!=RET_OK) return(RET_ERROR);
+		//--- поставим add requote to request queue
+			int _request_id;
+		    error = server_interface->RequestsAdd(&requote,FALSE,&_request_id);
+			#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply RequestsAdd ", "login %d %d id %d", requote.login, error, _request_id);
+			#endif*/
+			//order.subs_order = 
+			//orders.push_back(order);
+		} while (res.next() == SQLITE_ROW);
+		
+		for (auto it = orders.begin(); it != orders.end(); ++it){
+			saveOrder((*it).order, (*it).subs_order);
+		}
+		#if DEBUG
+			ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply ", "end");
+		#endif
 }
 void SocialTrade::tradeRequestApply(RequestInfo *req){
 	ExtLogger.Out(RET_OK, "SocialTrade::tradeRequestApply", "start");
@@ -455,8 +714,9 @@ SocialTrade::~SocialTrade(){
 }
 canalProc func = mainSocialTrade;
 
-void SocialTrade::addTurn(TradeRecord *trade, const UserInfo *user, const int mode, const ConSymbol *symb){
-	if (trade == NULL && user == NULL && symb == NULL) return;
+void SocialTrade::addTurn(TradeRecord *trade, const UserInfo *user, const int mode, const ConSymbol *symb)
+{
+	if (trade == NULL && user == NULL) return;
 	//if (user->login != 949) return;
 	if (trade->cmd == OP_BALANCE || trade->cmd == OP_CREDIT) return;
 	//ExtLogger.Out(RET_OK, "SocialTrade::addTurn", "group %s", user->group);
@@ -503,6 +763,8 @@ void SocialTrade::getUserInfo(int login, UserInfo *_user){
 	(*_user).credit = subcribeUser.credit;
 	(*_user).balance = subcribeUser.balance;
 	(*_user).prevbalance = subcribeUser.prevbalance;
+	(*_user).agent_account = subcribeUser.agent_account;
+	COPY_STR((*_user).ip, "localhost");
 	COPY_STR((*_user).group, subcribeUser.group);
 	COPY_STR((*_user).name, subcribeUser.name);
 }
@@ -513,7 +775,14 @@ bool SocialTrade::addSubscribe(unsigned int master, unsigned int subscribe)
     ExtLogger.Out(RET_OK, "SocialTrade", "addSubscribe: master %d subscribe %d", master, subscribe);
     #endif	
 	int error = 0;
-	string q = "insert into socialtrade(`login`,`subscriber`) values([l],[s])";
+	string q;
+	q = "select id from socialtrade where login=[l] and subscriber=[s]";
+	replaceStr(&q, "[l]", master);	
+    replaceStr(&q, "[s]", subscribe);
+	if(sql.query(q) == SQLITE_ROW){
+		return true;
+	}
+	q = "insert into socialtrade(`login`,`subscriber`) values([l],[s])";
 	replaceStr(&q, "[l]", master);	
     replaceStr(&q, "[s]", subscribe);
 	error = sql.query(q);	
@@ -539,7 +808,7 @@ bool SocialTrade::deleteSubscribe(unsigned int master, unsigned int subscribe)
     return error == SQLITE_OK;	
 }
 //настройки подписчика
-int updateSettingSubscribe(int login, string name_setting, string value)
+int SocialTrade::updateSettingSubscribe(int login, string name_setting, string value)
 {
 	if(!login || (name_setting == "")){
 		return 401;

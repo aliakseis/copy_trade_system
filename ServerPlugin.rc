@@ -1,4 +1,4 @@
-//Microsoft Developer Studio generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -16,12 +16,9 @@
 // Neutral resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
-#ifdef _WIN32
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 #pragma code_page(1251)
-#endif //_WIN32
 
-#ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
 //
 // Version
@@ -44,18 +41,16 @@ BEGIN
     BEGIN
         BLOCK "000004b0"
         BEGIN
-            VALUE "Comments", "http://www.eqvola.com\0"
-            VALUE "CompanyName", "Eqvola\0"
-            VALUE "FileDescription", "MetaTrader 4 Server Plugin Copy System\0"
-            VALUE "FileVersion", "1, 0, 0, 1\0"
-            VALUE "InternalName", "MetaTrader 4 Server Plugin Copy System\0"
-            VALUE "LegalCopyright", "© 2015-2016, Eqvola\0"
-            VALUE "LegalTrademarks", "CopySystem®\0"
-            VALUE "OriginalFilename", "copysystem.dll\0"
-            VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "MetaTrader 4 Server Plugin Copy System\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
-            VALUE "SpecialBuild", "\0"
+            VALUE "Comments", "http://www.eqvola.com"
+            VALUE "CompanyName", "Eqvola"
+            VALUE "FileDescription", "MetaTrader 4 Server Plugin Copy System"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "MetaTrader 4 Server Plugin Copy System"
+            VALUE "LegalCopyright", "© 2015-2016, Eqvola"
+            VALUE "LegalTrademarks", "CopySystem®"
+            VALUE "OriginalFilename", "copytrade.dll"
+            VALUE "ProductName", "MetaTrader 4 Server Plugin Copy System"
+            VALUE "ProductVersion", "1, 0, 0, 1"
         END
     END
     BLOCK "VarFileInfo"
@@ -64,20 +59,16 @@ BEGIN
     END
 END
 
-#endif    // !_MAC
-
 #endif    // Neutral resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Russian resources
+// Russian (Russia) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
-#ifdef _WIN32
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 #pragma code_page(1251)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -85,18 +76,18 @@ LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE DISCARDABLE 
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE DISCARDABLE 
+2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE DISCARDABLE 
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -104,7 +95,7 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-#endif    // Russian resources
+#endif    // Russian (Russia) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
