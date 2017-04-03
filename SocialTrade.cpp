@@ -234,7 +234,6 @@ void SocialTrade::tradesUpdate(TradeRecord *trade, UserInfo *user, const int mod
 	if (res.next() == SQLITE_ROW){
 		UserInfo subcribeUser = {0};
 		TradeRecord _trade = { 0 };
-		SQLiteResult res_setting;
 		int error = 0;
 		do{
 			#if DEBUG
@@ -243,89 +242,16 @@ void SocialTrade::tradesUpdate(TradeRecord *trade, UserInfo *user, const int mod
 
 			server_interface->OrdersGet(res.getIntVal(0), &_trade);
 			getUserInfo(_trade.login, &subcribeUser);
-			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd perc ", "%d", res.getIntVal(0));
-			#endif
-
-			query = "select percent from setting_subscribe where subscribe_login = [l]";
-			replaceStr(&query, "[l]", _trade.login);
-			sql.query_result(&res_setting, query);
-			//получение процента нагрузки
-			int subscribe_percent;
-			if(res_setting.next() == SQLITE_ROW){
-				subscribe_percent= res_setting.getIntVal(0);
-			}else{
-				subscribe_percent = 100;
-			}
-			double perc = 0;
-			perc = (subcribeUser.balance);
-			perc = perc / user->balance;
-			perc = perc * subscribe_percent;
-			perc = perc / 100;
-			//соотношение плеч
-			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "");
-			#endif
-			double temp = 0;
-			temp = subcribeUser.leverage;
-			temp = temp / user->leverage;
-			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "%f", temp);
-			#endif
-			perc = perc * temp;
-			#if DEBUG
-				ExtLogger.Out(RET_OK, "SocialTrade::tradesAdd calc leverage perc ", "%f", perc);
-			#endif
-
-			mirror_info.type = TT_ORDER_MODIFY;
-			mirror_info.flags = TT_FLAG_NONE;
-			mirror_info.cmd = trade->cmd;
-			mirror_info.order = _trade.order;
-			mirror_info.orderby = 0;
-			COPY_STR(mirror_info.symbol, trade->symbol);
-			mirror_info.volume = _trade.volume;
-			mirror_info.price = trade->open_price;
-			mirror_info.sl = trade->sl;
-			mirror_info.tp = trade->tp;
-			mirror_info.ie_deviation = 0;			
-			_snprintf_s(mirror_info.comment, sizeof(mirror_info.comment) - 1, "coverage for #%d", trade->order);
-
-			
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo type ", "%d", mirror_info.type);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo flags ", "%d", mirror_info.flags);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo cmd ", "%d", mirror_info.cmd);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo manaorderger ", "%d", mirror_info.order);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo orderby ", "%d", mirror_info.orderby);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo symbol ", "%s", mirror_info.symbol);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo volume ", "%d",  mirror_info.volume);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo price ", "%f", mirror_info.price);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo sl ", "%f", mirror_info.sl);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo tp ", "%f", mirror_info.tp);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo ie_deviation ", "%d", mirror_info.ie_deviation);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo comment ", "%s", mirror_info.comment);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo expiration ", "%d", mirror_info.expiration);
-			ExtLogger.Out(RET_OK, "SocialTrade::MtSrvTradeRequestFilter TradeTransInfo crc ", "%d", mirror_info.crc);
-			
-			error = server_interface->OrdersOpen(&mirror_info, &subcribeUser);
-			int request_id = 0;
-			RequestInfo requote={0};
-			requote.login       =subcribeUser.login;
-			strcpy(requote.group,subcribeUser.group);
-			requote.balance     =subcribeUser.balance;
-			requote.credit      =subcribeUser.credit;
-			requote.trade = mirror_info;
-			requote.prices[0] = trade->open_price;
-			requote.prices[1] = trade->open_price;
-			//error = server_interface->RequestsAdd(&requote,FALSE,&request_id);
 
 			_trade.sl = trade->sl;
 			_trade.tp = trade->tp;
+			_trade.open_price = trade->open_price;
 			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d", _trade.order);
 			getUserInfo(_trade.login, &subcribeUser);
-			//server_interface->OrdersUpdate(&_trade, &subcribeUser, mode);
+			server_interface->OrdersUpdate(&_trade, &subcribeUser, UPDATE_NORMAL);
 
 			#if DEBUG
-			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order", "%d request_id %d", error, request_id);
+			ExtLogger.Out(RET_OK, "SocialTrade::tradesUpdate order ", "%d", error);
 			#endif
 		} while (res.next() == SQLITE_ROW);
 	}	
@@ -397,11 +323,11 @@ void SocialTrade::TradeClose(TradeRecord *trade, UserInfo *user, const int mode)
 			mirror_info.cmd = trade->cmd;
 			mirror_info.order = _trade.order;
 			mirror_info.orderby = 0;
-			COPY_STR(mirror_info.symbol, trade->symbol);
-			mirror_info.volume = trade->volume;
+			COPY_STR(mirror_info.symbol,  _trade.symbol);
+			mirror_info.volume = _trade.volume;
 			mirror_info.price = trade->close_price;
-			mirror_info.sl = trade->sl;
-			mirror_info.tp = trade->tp;
+			mirror_info.sl =  _trade.sl;
+			mirror_info.tp =  _trade.tp;
 			mirror_info.ie_deviation = 0;			
 			_snprintf_s(mirror_info.comment, sizeof(mirror_info.comment) - 1, "coverage for #%d", trade->order);
 
